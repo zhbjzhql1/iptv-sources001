@@ -3,7 +3,7 @@ import {dirname} from 'node:path';
 import fs from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dataFilePath = `${__dirname}/iptv/`;
+const dataFilePath = `${__dirname}/../iptv/`;
 
 const allowedGenreNames = {
     '央视频道': '央视',
@@ -15,7 +15,7 @@ const genreNameSeparator = ',#';
 
 const main = async () => {
     const url = 'https://m3u.ibert.me/txt/fmml_ipv6.txt';
-    const genres = fetchIptv(url);
+    const genres = await fetchIptv(url);
     const filteredGenres = [];
     for (const genre of genres.split(genreSeparator)) {
         const genreName = genre.split(genreNameSeparator)[0];
@@ -26,7 +26,7 @@ const main = async () => {
 
     const newGenres = filteredGenres.join(genreSeparator);
 
-    fs.writeFileSync(`${dataFilePath}/fmml_ipv6_sh.txt`, newGenres);
+    fs.writeFileSync(`${dataFilePath}fmml_ipv6_sh.txt`, newGenres);
 };
 
 const fetchIptv = async (url) => {

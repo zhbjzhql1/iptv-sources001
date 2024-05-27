@@ -2,7 +2,7 @@
   "name": "iptv-sources",
   "version": "1.0.0",
   "description": "Sync 3rd party IPTV source and filter out what I need",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
