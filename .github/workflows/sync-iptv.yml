@@ -1,0 +1,26 @@
+name: Sync IPTV
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync IPTV
+        run: node scripts/syncIptv.js
+
+      - name: Setup GitHub
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+      - name: Submit data
+        run: |
+          git add .
+          git commit -m 'sync iptv'
+          git push
