@@ -22,5 +22,5 @@ jobs:
       - name: Submit data
         run: |
           git add .
-          git commit -m 'sync iptv'
+          git commit -m 'auto sync'
           git push
