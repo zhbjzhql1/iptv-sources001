@@ -13,6 +13,7 @@ const SOURCES = [
     {
         id: 'fmml_ipv6_sh',
         alias: 'fmml',
+        type: 'diyp',
         url: 'https://m3u.ibert.me/txt/fmml_ipv6.txt',
         genres: {
             '央视频道': '央视',
@@ -22,32 +23,34 @@ const SOURCES = [
     },
     {
         id: 'aptv',
+        type: 'm3u',
         url: 'https://raw.githubusercontent.com/Kimentanm/aptv/master/m3u/iptv.m3u'
     }
 ];
 
 const main = async () => {
     for (const source of SOURCES) {
-        const filteredSource = await filterGenre(source.url, source.genres);
-        fs.writeFileSync(`${dataFilePath}${source.id}.txt`, filteredSource);
-        fs.writeFileSync(`${dataFilePath}${source.id}.m3u`, filteredSource);
+        const origin = await fetchSource(source.url);
+        const genres = source.type === 'm3u' ? m3uToDiyp(origin) : origin;
+        const filteredGenres = await filterGenre(genres, source.genres);
+        fs.writeFileSync(`${dataFilePath}${source.id}.txt`, filteredGenres);
+        // filter function doesn't support m3u
+        source.type === 'm3u' && fs.writeFileSync(`${dataFilePath}${source.id}.m3u`, origin);
         if (source.alias) {
-            fs.writeFileSync(`${dataFilePath}${source.alias}.txt`, filteredSource);
-            fs.writeFileSync(`${dataFilePath}${source.alias}.m3u`, filteredSource);
+            fs.writeFileSync(`${dataFilePath}${source.alias}.txt`, filteredGenres);
+            source.type === 'm3u' && fs.writeFileSync(`${dataFilePath}${source.id}.m3u`, origin);
         }
     }
 };
 
-const filterGenre = async (sourceUrl, allowedGenres) => {
-    const source = await fetchIptv(sourceUrl);
+const filterGenre = async (genres, allowedGenres) => {
     if (allowedGenres) {
         const filteredGenres = [];
-        for (const genre of source.split(GENRE_SEPARATOR)) {
+        for (const genre of genres.split(GENRE_SEPARATOR)) {
             const genreName = getGenreName(genre);
             if (genreName && genreName in allowedGenres) {
                 const genreAlias = allowedGenres[genreName];
                 if (genreAlias) {
-                    // FIXME: Doesn't support type 2
                     filteredGenres.push([allowedGenres[genreName], genre.split(GENRE_NAME_SEPARATOR)[1]].join(GENRE_NAME_SEPARATOR));
                 } else {
                     filteredGenres.push(genre);
@@ -58,7 +61,7 @@ const filterGenre = async (sourceUrl, allowedGenres) => {
         return filteredGenres.join(GENRE_SEPARATOR);
     }
 
-    return source;
+    return genres;
 }
 
 /**
@@ -75,7 +78,40 @@ const getGenreName = (genre) => {
     return genre.split(GENRE_NAME_SEPARATOR)[0];
 }
 
-const fetchIptv = async (url) => {
+const m3uToDiyp = (m3uContent, genreFlag = "#genre#") => {
+    const lines = m3uContent.split('\n');
+    let diypLines = [];
+    let genreName = '';
+    let lastGenreName = '';
+    let channelName = '';
+
+    lines.forEach(line => {
+        line = line.trim();
+        if (line.startsWith('#EXTINF:')) {
+            const result = line.match(GENRE_NAME_REGEX);
+            if (result) {
+                genreName = result[1];
+            }
+            // 提取频道名称
+            const nameStartIndex = line.indexOf(',') + 1;
+            channelName = line.substring(nameStartIndex).trim();
+        } else if (line.startsWith('http://') || line.startsWith('https://')) {
+            // 获取频道的 URL 并生成 DIYP 行
+            const channelUrl = line.trim();
+            const diypLine = `${channelName},${channelUrl}`;
+            diypLines.push(diypLine);
+        }
+        if (genreName !== lastGenreName) {
+            diypLines.push('');
+            diypLines.push(`${genreName},${genreFlag}`);
+            lastGenreName = genreName;
+        }
+    });
+
+    return diypLines.join('\n').trim();
+}
+
+const fetchSource = async (url) => {
     const options = {
         method: 'GET',
     };
